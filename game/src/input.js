@@ -34,30 +34,56 @@ const KEY_ACTIONS = {
 export function createInput(canvas) {
   const held = new Set();
   let queued = 0;
+  let touchRotate = 0;
   let mouseX = LIGHTHOUSE.x;
   let mouseY = LIGHTHOUSE.y - 200;
   let mouseDown = false;
   let clickX = null;
   let clickY = null;
+  let lastAim = Math.atan2(mouseY - LIGHTHOUSE.y, mouseX - LIGHTHOUSE.x);
 
   function angleFromMouse() {
     return Math.atan2(mouseY - LIGHTHOUSE.y, mouseX - LIGHTHOUSE.x);
   }
 
-  canvas.addEventListener('mousemove', (event) => {
+  function pointFromEvent(event) {
     const rect = canvas.getBoundingClientRect();
     mouseX = ((event.clientX - rect.left) / rect.width) * 1280;
     mouseY = ((event.clientY - rect.top) / rect.height) * 720;
+  }
+
+  canvas.addEventListener('mousemove', (event) => {
+    pointFromEvent(event);
   });
   canvas.addEventListener('mousedown', (event) => {
     mouseDown = true;
-    const rect = canvas.getBoundingClientRect();
-    mouseX = ((event.clientX - rect.left) / rect.width) * 1280;
-    mouseY = ((event.clientY - rect.top) / rect.height) * 720;
+    pointFromEvent(event);
     clickX = mouseX;
     clickY = mouseY;
     queued |= ACTION_PULSE;
   });
+  // Touch: drag aims the beam, a tap pulses — the same verbs as the mouse.
+  canvas.addEventListener('touchstart', (event) => {
+    event.preventDefault();
+    window.__touchMode = true;
+    document.body.classList.add('touch');
+    const touch = event.changedTouches[0];
+    mouseDown = true;
+    pointFromEvent(touch);
+    clickX = mouseX;
+    clickY = mouseY;
+    queued |= ACTION_PULSE;
+  }, { passive: false });
+  canvas.addEventListener('touchmove', (event) => {
+    event.preventDefault();
+    window.__touchMode = true;
+    document.body.classList.add('touch');
+    pointFromEvent(event.changedTouches[0]);
+  }, { passive: false });
+  canvas.addEventListener('touchend', (event) => {
+    event.preventDefault();
+    mouseDown = false;
+  }, { passive: false });
   window.addEventListener('mouseup', () => {
     mouseDown = false;
   });
@@ -82,13 +108,29 @@ export function createInput(canvas) {
     aimAngle() {
       return angleFromMouse();
     },
+    // True once the player has actually aimed somewhere new: the onboarding
+    // hint clears on the action, not on a timer.
+    aimedSinceLastCheck() {
+      const angle = angleFromMouse();
+      const moved = Math.abs(angle - lastAim) > 0.05;
+      lastAim = angle;
+      return moved;
+    },
     // Fine rotation held this frame: -1, 0 or 1.
     rotateDirection() {
+      if (touchRotate !== 0) return touchRotate;
       const left = held.has('ArrowLeft') || held.has('a') || held.has('A');
       const right = held.has('ArrowRight') || held.has('d') || held.has('D');
       if (left && !right) return -1;
       if (right && !left) return 1;
       return 0;
+    },
+    // On-screen buttons (touch): hold to rotate, tap for an action.
+    setTouchRotate(direction) {
+      touchRotate = direction;
+    },
+    queueAction(action) {
+      queued |= action;
     },
     mouseDown() {
       return mouseDown;

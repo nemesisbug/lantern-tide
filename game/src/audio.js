@@ -9,6 +9,7 @@ export function createAudio() {
   let wavesGain = null;
   let muted = false;
   let motifTimer = 0;
+  let lastWarn = 0;
 
   function ensure() {
     if (context) return true;
@@ -154,6 +155,15 @@ export function createAudio() {
     wreck() {
       thudNoise();
       blip(120, 38, 0.4, 0.4, 'sine');
+    },
+    // Wraith warning: a soft two-note alert, at most once every 2.5 s, so a
+    // clinging wraith is heard as well as seen.
+    warn() {
+      const now = Date.now();
+      if (now - lastWarn < 2500) return;
+      lastWarn = now;
+      blip(660, 520, 0.16, 0.1, 'triangle');
+      window.setTimeout(() => blip(520, 420, 0.16, 0.08, 'triangle'), 180);
     },
     // A short title motif: four notes, one every 0.45 s.
     motif() {

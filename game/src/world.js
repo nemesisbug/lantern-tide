@@ -236,6 +236,7 @@ export function createWorld(random) {
   function nextNight() {
     state.nightsSurvived += 1;
     state.oil = state.maxOil;
+    state.floaters = [];
     if (state.night >= NIGHTS.length) {
       state.phase = 'won';
       return EVENT_WIN;
@@ -248,6 +249,7 @@ export function createWorld(random) {
   function lose(reason) {
     state.phase = 'lost';
     state.loseReason = reason;
+    state.floaters = [];
     return EVENT_OVER;
   }
 
@@ -378,7 +380,7 @@ export function createWorld(random) {
         let diff = target - ship.heading;
         while (diff > Math.PI) diff -= Math.PI * 2;
         while (diff < -Math.PI) diff += Math.PI * 2;
-        ship.heading += Math.max(-2.2 * dt, Math.min(2.2 * dt, diff));
+        ship.heading += Math.max(-2.5 * dt, Math.min(2.5 * dt, diff));
         ship.speed = SHIP.guidedSpeed * state.guidedSpeedFactor;
       } else {
         ship.speed = SHIP.driftSpeed;
@@ -386,12 +388,12 @@ export function createWorld(random) {
       if (!inFog) {
         for (const rock of state.rocks) {
           const d = distance(ship.x, ship.y, rock.x, rock.y);
-          if (d < 85 && d > 1) {
+          if (d < 110 && d > 1) {
             const away = Math.atan2(ship.y - rock.y, ship.x - rock.x);
             let diff = away - ship.heading;
             while (diff > Math.PI) diff -= Math.PI * 2;
             while (diff < -Math.PI) diff += Math.PI * 2;
-            ship.heading += Math.max(-3 * dt, Math.min(3 * dt, diff));
+            ship.heading += Math.max(-3.2 * dt, Math.min(3.2 * dt, diff));
           }
         }
       }

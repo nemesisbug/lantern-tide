@@ -10,10 +10,33 @@
   #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
   /* Read aloud, never shown: the status line screen readers announce. */
   #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  /* On-screen touch controls: hidden on desktop, shown on touch devices. */
+  #touch { display: none; }
+  body.touch #touch { display: block; }
+  @media (pointer: coarse) { #touch { display: block; } }
+  #touch button {
+    position: fixed; z-index: 2; border: 1.5px solid rgba(255, 217, 122, 0.5);
+    background: rgba(4, 12, 20, 0.66); color: #ffe9a8; border-radius: 16px;
+    font: bold 20px Georgia, serif; touch-action: none; user-select: none;
+    -webkit-user-select: none; padding: 0;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  }
+  #touch button:active { background: rgba(255, 217, 122, 0.35); box-shadow: 0 4px 6px rgba(0, 0, 0, 0.35); }
+  #btn-left { left: 16px; bottom: 76px; width: 64px; height: 64px; }
+  #btn-right { left: 92px; bottom: 76px; width: 64px; height: 64px; }
+  #btn-pulse { right: 16px; bottom: 76px; width: 96px; height: 64px; }
+  #btn-beam { right: 16px; bottom: 152px; width: 96px; height: 48px; font-size: 17px; }
 </style>
 </head>
 <body>
 <canvas id="game" aria-label="Lantern Tide: aim the lighthouse beam to guide lost ships home through rocks and fog"></canvas>
+<div id="touch" aria-hidden="true">
+  <button id="btn-left" type="button">◀</button>
+  <button id="btn-right" type="button">▶</button>
+  <button id="btn-pulse" type="button">PULSE</button>
+  <button id="btn-beam" type="button">BEAM</button>
+</div>
 <p id="status" role="status" aria-live="polite"></p>
 <script type="module" src="./src/main.js"></script>
 </body>

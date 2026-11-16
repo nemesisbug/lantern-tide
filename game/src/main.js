@@ -69,9 +69,13 @@ function runGame() {
   const input = createInput(canvas);
   let screen = SCREEN_TITLE;
   let best = readBest();
+  let newBest = false;
   let accumulator = 0;
   let last = performance.now();
   let titleSweep = 0;
+  // Night-1 onboarding progress: each lesson clears when the player does it.
+  let hints = { aimed: false, rescued: false, pulsed: false, doused: false, done: false };
+  let wasClinging = false;
   // Edge actions for the simulation, set once per frame and consumed by
   // the first fixed step of that frame.
   let pendingActions = 0;
@@ -83,12 +87,16 @@ function runGame() {
   function startGame() {
     world.reset();
     accumulator = 0;
+    newBest = false;
+    hints = { aimed: false, rescued: false, pulsed: false, doused: false, done: false };
+    wasClinging = false;
     screen = SCREEN_PLAY;
     announce('Playing. Night 1 of 5. Guide the ships home.');
   }
 
   function endGame(won) {
     screen = won ? SCREEN_VICTORY : SCREEN_OVER;
+    newBest = world.state.score > best && world.state.score > 0;
     if (world.state.score > best) {
       best = world.state.score;
       saveBest(best);
@@ -175,6 +183,7 @@ function runGame() {
       return;
     }
     if (screen !== SCREEN_PLAY) return;
+    const beamWasOn = world.beam.on;
     const controls = {
       aim: input.aimAngle(),
       rotate: input.rotateDirection(),
@@ -187,6 +196,15 @@ function runGame() {
     if (events & EVENT_RESCUE) audio.bell();
     if (events & EVENT_WRECK) audio.wreck();
     if (events & EVENT_PULSE) audio.pulse();
+    // Onboarding + warnings, all driven by what the player actually did.
+    if (input.aimedSinceLastCheck()) hints.aimed = true;
+    if (events & EVENT_RESCUE) hints.rescued = true;
+    if (events & EVENT_PULSE) hints.pulsed = true;
+    if (beamWasOn && !world.beam.on) hints.doused = true;
+    if (hints.aimed && hints.rescued && hints.pulsed && hints.doused) hints.done = true;
+    const clinging = world.beam.clinging > 0;
+    if (clinging && !wasClinging) audio.warn();
+    wasClinging = clinging;
     if (events & EVENT_WIN) endGame(true);
     else if (events & EVENT_OVER) endGame(false);
     else if (world.state.phase === 'upgrade') {
@@ -212,8 +230,30 @@ function runGame() {
       if (screen === SCREEN_UPGRADE) world.step(STEP, null);
     }
     renderer.draw(world.state, world.beam, screen);
-    hud.draw(world.state, world.beam, screen, best, audio.isMuted());
+    hud.draw(world.state, world.beam, screen, best, audio.isMuted(), { hints, newBest });
   }
+
+  // On-screen touch controls (shown only on touch devices, see index.html):
+  // hold the arrows to rotate, tap PULSE to banish wraiths, BEAM to douse.
+  function wireTouchButton(id, down, up) {
+    const button = document.getElementById(id);
+    if (!button) return;
+    button.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      window.__touchMode = true;
+      document.body.classList.add('touch');
+      down();
+    });
+    if (up) {
+      for (const eventName of ['pointerup', 'pointercancel', 'pointerleave']) {
+        button.addEventListener(eventName, up);
+      }
+    }
+  }
+  wireTouchButton('btn-left', () => input.setTouchRotate(-1), () => input.setTouchRotate(0));
+  wireTouchButton('btn-right', () => input.setTouchRotate(1), () => input.setTouchRotate(0));
+  wireTouchButton('btn-pulse', () => input.queueAction(ACTION_PULSE));
+  wireTouchButton('btn-beam', () => input.queueAction(ACTION_TOGGLE_BEAM));
 
   window.addEventListener('pointerdown', () => audio.unlock(), { once: true });
   window.addEventListener('keydown', () => audio.unlock(), { once: true });
